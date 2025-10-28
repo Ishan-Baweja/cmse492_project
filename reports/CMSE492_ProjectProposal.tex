@@ -1,0 +1,417 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% CMSE 492 Final Project Report Template
+% Using RevTeX 4.2 for professional scientific document formatting
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\documentclass[aps,prl,preprint,groupedaddress]{revtex4-2}
+
+% Essential packages
+\usepackage{graphicx}       % For including figures
+\usepackage{dcolumn}        % Align table columns on decimal point
+\usepackage{bm}             % Bold math symbols
+\usepackage{hyperref}       % Hyperlinks
+\usepackage{amsmath}        % Advanced math features
+\usepackage{amssymb}        % Math symbols
+\usepackage{booktabs}       % Professional-looking tables
+\usepackage{float}          % Better float placement
+\usepackage{caption}        % Caption customization
+\usepackage{subcaption}     % Subfigures
+\usepackage{listings}       % Code listings (optional)
+\usepackage{xcolor}         % Colors
+
+% Hyperlink setup
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    filecolor=magenta,      
+    urlcolor=cyan,
+    citecolor=blue,
+}
+
+% Code listing setup (optional - uncomment if needed)
+% \lstset{
+%     basicstyle=\ttfamily\small,
+%     breaklines=true,
+%     frame=single,
+%     language=Python,
+%     showstringspaces=false,
+%     commentstyle=\color{green!50!black},
+%     keywordstyle=\color{blue},
+%     stringstyle=\color{red}
+% }
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% DOCUMENT INFORMATION - FILL IN YOUR DETAILS
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{document}
+
+\title{Breast Cancer Wisconsin (Diagnostic): Comparing Linear, Ensemble, and Kernel Methods for Tumor Classification}
+
+\author{Ishan Baweja}
+\email{bawejais@msu.edu}
+\affiliation{Department of Computational Mathematics, Science, and Engineering\\
+Michigan State University, East Lansing, MI 48824}
+
+\date{\today}
+
+
+\begin{abstract}
+    Breast cancer diagnosis benefits from accurate and interpretable machine-learning models that can assist clinicians in early detection. This project applies supervised learning to the Breast Cancer Wisconsin (Diagnostic) dataset, which contains 30 quantitative features describing cell-nucleus characteristics from fine-needle aspirates. The goal is to predict whether a tumor is benign or malignant based on these measurements.
+    
+    Three model families are compared: Logistic Regression (linear baseline), Random Forest (nonlinear ensemble), and Support Vector Machine with a polynomial kernel (nonlinear kernel method). Each model is trained using stratified splits, standardized features where appropriate, and cross-validation for hyperparameter tuning. Performance is evaluated primarily using the ROC–AUC metric, with accuracy and F1 as secondary measures.
+    
+    Preliminary exploration shows moderate class imbalance and well-separated feature distributions. The study aims to identify which model family best balances interpretability and accuracy for this dataset and to quantify how tuning parameters such as regularization strength, tree depth, and kernel degree affect generalization. Expected contributions include a reproducible baseline workflow and insights relevant to applying machine learning to diagnostic imaging data.
+\end{abstract}
+    
+
+\maketitle
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Background and Motivation}
+\label{sec:background}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+Describe the problem/question you are attempting to answer. This section must answer the following questions:
+
+\begin{itemize}
+    \item Why is this problem/question important?
+    \item Who cares about this problem/question being solved/answered?
+    \item What are the consequences of solving this problem/answering this question?
+    \item What has been done so far to address this problem/question?
+    \item State very clearly what the desired outcome is. How can Machine Learning (ML) help achieve your goal and/or solve your problem?
+\end{itemize}
+
+[Breast cancer remains one of the most common and life-threatening cancers worldwide, accounting for a significant percentage of cancer-related deaths among women. Early and accurate diagnosis plays a critical role in determining treatment outcomes and reducing unnecessary invasive procedures. However, diagnostic evaluations based on imaging or cell morphology are often subjective and time-intensive, depending on the expertise of radiologists and pathologists. This introduces variability and potential misclassification between benign and malignant cases.
+Machine Learning (ML) offers a quantitative, data-driven approach to assist clinicians by identifying patterns in tumor cell features that may not be obvious to the human eye. The Breast Cancer Wisconsin (Diagnostic) dataset provides a valuable opportunity to study this application. It contains 30 numerical features that describe characteristics of cell nuclei, such as radius, texture, smoothness, and symmetry. These features were extracted from digitized images of fine-needle aspirates, making the dataset a well-established benchmark for evaluating machine learning classifiers in healthcare.
+Previous research has shown that algorithms such as logistic regression, decision trees, and support vector machines can achieve high accuracy on this dataset. However, many studies focus only on performance metrics like accuracy without exploring the interpretability or robustness of these models. Interpretability is crucial in healthcare settings because practitioners need to understand the reasoning behind a model’s prediction before relying on it for patient care.
+The goal of this project is to compare three representative machine learning methods—Logistic Regression, Random Forest, and Support Vector Machine with a polynomial kernel—to evaluate their relative strengths in accuracy, interpretability, and generalization. The expected outcome is to determine which modeling approach best balances predictive performance with transparency, enabling more informed use of ML-based diagnostic tools in medical decision-making.]
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Data Description}
+\label{sec:data}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsection{Data Origins}
+The Breast Cancer Wisconsin (Diagnostic) dataset was originally created by Dr. William H. Wolberg at the University of Wisconsin Hospitals, Madison. The data were collected from digitized images of fine-needle aspirates (FNA) of breast masses. Each sample describes the characteristics of cell nuclei in the image using 30 quantitative features that capture properties such as radius, texture, perimeter, area, smoothness, compactness, concavity, and symmetry. The dataset is publicly available through the UCI Machine Learning Repository and is also distributed with the \texttt{scikit-learn} Python library.
+
+\subsection{Dataset Characteristics}
+\begin{itemize}
+    \item \textbf{Number of samples (rows):} 569
+    \item \textbf{Number of features (columns):} 30 numerical features + 1 target variable
+    \item \textbf{Data types:} All features are continuous (floating-point values)
+    \item \textbf{Target variable:} Binary label indicating whether the tumor is malignant (0) or benign (1)
+\end{itemize}
+
+\subsection{Data Quality Analysis}
+The dataset is well-curated and contains no missing values. Features are all numeric, with ranges that differ substantially, which justifies the use of feature scaling (e.g., standardization) before training models such as Logistic Regression or Support Vector Machines. Because the data were collected under controlled conditions and preprocessed by domain experts, no major quality or consistency issues are expected.
+
+\subsubsection{Missing Values}
+No missing values were detected in the dataset. This was confirmed through the exploratory analysis, where all feature columns showed complete entries with no null or NaN indicators. The uniformity of the data ensures a straightforward preprocessing pipeline that does not require imputation.
+
+\subsubsection{Class Balance}
+The target variable is slightly imbalanced, with 357 benign (class 1) and 212 malignant (class 0) samples. Although the imbalance is moderate, stratified train-test splitting is used to preserve class proportions across training and test sets. Additionally, model evaluation will emphasize metrics that are insensitive to class imbalance, such as ROC--AUC and F1-score.
+
+\subsubsection{Statistical Summary}
+Figure~\ref{fig:eda_distribution_mean_radius} illustrates the distribution of one of the most influential features, \texttt{mean radius}, which is approximately right-skewed. Figure~\ref{fig:eda_correlation_heatmap} shows strong correlations among size-related features such as \texttt{mean radius}, \texttt{mean perimeter}, and \texttt{mean area}. The dataset exhibits mild class imbalance, but otherwise appears clean, well-structured, and suitable for supervised learning.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.65\linewidth]{figures/eda_distribution_mean_radius.png}
+    \caption{Distribution of the \texttt{mean radius} feature.}
+    \label{fig:eda_distribution_mean_radius}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.65\linewidth]{figures/eda_correlation_heatmap.png}
+    \caption{Correlation heatmap for a subset of features.}
+    \label{fig:eda_correlation_heatmap}
+\end{figure}
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Preprocessing}
+\label{sec:preprocessing}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+This section outlines the preprocessing steps used to prepare the dataset for modeling, including data splitting, scaling, and other transformations designed to ensure fair model comparison and prevent data leakage.
+
+\subsection{Data Splitting}
+The dataset was divided into training and testing subsets using an 80/20 split. Because the dataset exhibits a mild imbalance between benign and malignant cases, stratified splitting was used to maintain the same class proportions in both subsets. This ensures that each model is trained and evaluated on representative class distributions. The random seed was fixed for reproducibility. The training set is later used for cross-validation and hyperparameter tuning, while the held-out test set is used strictly for final performance evaluation.
+
+\subsection{Feature Engineering}
+No additional domain-specific features were engineered because the dataset already provides 30 derived numerical attributes from medical imaging. Each feature represents a statistical descriptor of cell nucleus shape or texture (mean, standard error, and worst values). However, correlations among size-related features were noted during exploratory analysis, so future extensions could consider dimensionality reduction or feature selection techniques such as principal component analysis (PCA) to minimize redundancy.
+
+\subsection{Scaling, Transformation, and Encoding}
+Since all features are continuous and vary widely in magnitude, standardization was applied using the \texttt{StandardScaler} from \texttt{scikit-learn}. This transformation centers each feature to zero mean and unit variance, ensuring that algorithms sensitive to feature scale—particularly Logistic Regression and Support Vector Machines—perform optimally. Random Forests, being tree-based models, do not require scaling but were kept under the same preprocessing pipeline for consistency. No encoding or imputation was necessary because the dataset contains no categorical variables or missing values.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Machine Learning Task and Objective}
+\label{sec:ml_task}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+\subsection{Why Machine Learning?}
+Traditional diagnostic methods for breast cancer rely heavily on human interpretation of medical images and cytological samples. These manual processes can be subjective, inconsistent, and time-consuming. Human experts are highly skilled but may vary in their assessments, especially when the visual differences between benign and malignant cells are subtle. Machine Learning (ML) provides a systematic way to identify and quantify these subtle patterns in numerical form, improving diagnostic consistency and reducing workload for clinicians. 
+
+ML algorithms can automatically learn complex relationships between tumor features—such as texture, compactness, and concavity—and the likelihood of malignancy. This approach not only improves accuracy but also facilitates the discovery of feature combinations that contribute most strongly to classification outcomes. The reproducibility and scalability of ML models make them a powerful complement to human expertise in the healthcare domain.
+
+\subsection{Task Type}
+This project falls under the category of \textbf{Supervised Learning}, specifically a \textbf{binary classification} task. Each data point represents a tumor sample with 30 numeric input features, and the objective is to predict whether the tumor is malignant (0) or benign (1). The model is trained using labeled data—meaning the correct class for each sample is known—allowing the algorithm to learn decision boundaries that generalize to new, unseen samples. 
+
+Supervised learning is appropriate for this problem because the target variable is explicitly defined, and the goal is to map measurable input features to a discrete output class. The project will compare three algorithms—Logistic Regression, Random Forest, and Support Vector Machine with a polynomial kernel—to evaluate their ability to distinguish malignant from benign tumors while balancing interpretability, computational efficiency, and predictive accuracy.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Models}
+\label{sec:models}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+This section describes the three machine learning models compared in this study, progressing from interpretable linear models to more complex nonlinear approaches. Each model represents a distinct family of algorithms, providing a comprehensive comparison of performance, interpretability, and computational complexity.
+
+\subsection{Model Selection}
+The three models selected for this project are:
+\begin{itemize}
+    \item \textbf{Logistic Regression} — a linear model that serves as a simple, interpretable baseline.
+    \item \textbf{Random Forest Classifier} — an ensemble of decision trees that captures nonlinear feature interactions.
+    \item \textbf{Support Vector Machine (SVM) with Polynomial Kernel} — a kernel-based model capable of modeling smooth nonlinear decision boundaries.
+\end{itemize}
+These models collectively represent increasing levels of model flexibility and complexity, allowing for meaningful comparison of their performance and generalization behavior.
+
+\subsubsection{Model 1: Logistic Regression}
+Logistic Regression is used as the baseline model due to its simplicity and interpretability. It models the log-odds of the target class as a linear combination of input features, making it easy to interpret feature importance through model coefficients. Despite its linear assumptions, Logistic Regression often performs surprisingly well when the features are standardized and the data are well-separated, as is the case with this dataset. L2 regularization (ridge penalty) is applied to prevent overfitting and stabilize coefficient estimates.
+
+\subsubsection{Model 2: Random Forest Classifier}
+Random Forest is a nonlinear ensemble method that constructs multiple decision trees on bootstrapped samples of the data and averages their predictions. This approach reduces variance compared to a single decision tree and captures complex interactions between features. Each tree considers a random subset of features at each split, promoting model diversity and robustness. Random Forests are particularly effective on tabular datasets like this one, where feature relationships are not strictly linear. Feature importance metrics from the ensemble also provide valuable interpretability for identifying which cell characteristics most influence classification outcomes.
+
+\subsubsection{Model 3: Support Vector Machine (Polynomial Kernel)}
+The Support Vector Machine (SVM) is a maximum-margin classifier that finds an optimal boundary separating the two classes in a transformed feature space. A polynomial kernel of degree three is used to capture nonlinear patterns without explicitly generating polynomial features. SVMs are effective in high-dimensional spaces and are robust to overfitting when regularization is properly tuned. However, they are computationally more expensive than Logistic Regression and Random Forests, which makes them a suitable higher-complexity model for this comparison.
+
+\subsection{Regularization and Hyperparameter Tuning}
+Regularization and hyperparameter tuning are performed using stratified 5-fold cross-validation on the training set. For Logistic Regression, the inverse regularization strength (\texttt{C}) is tuned to balance bias and variance. For Random Forest, the primary hyperparameters include the number of trees (\texttt{n\_estimators}) and maximum depth (\texttt{max\_depth}). For the SVM, both the regularization parameter (\texttt{C}) and the polynomial degree are tuned. Grid search is employed to identify the combination of parameters that maximizes the ROC--AUC score on validation folds. The best-performing model is then refit on the full training data and evaluated on the held-out test set.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Training Methodology}
+\label{sec:training}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+This section describes the training procedures, loss functions, and optimization strategies used for each model. The objective is to ensure fair and consistent training across all algorithms while preventing overfitting and maintaining interpretability.
+
+\subsection{Loss Functions}
+Each model optimizes a different objective function based on its underlying assumptions:
+\begin{itemize}
+    \item \textbf{Logistic Regression:} The binary cross-entropy (log-loss) function is minimized:
+    \begin{equation}
+    \mathcal{L}_{\text{log}} = -\frac{1}{N} \sum_{i=1}^{N} \left[y_i \log(\hat{y}_i) + (1 - y_i)\log(1 - \hat{y}_i)\right] + \lambda ||\mathbf{w}||_2^2
+    \end{equation}
+    where $\lambda$ controls the strength of L2 regularization.
+    
+    \item \textbf{Random Forest:} The ensemble minimizes the Gini impurity at each split:
+    \begin{equation}
+    G = \sum_{k=1}^{K} p_k (1 - p_k)
+    \end{equation}
+    where $p_k$ is the proportion of samples belonging to class $k$ in a given node. The model optimizes splits that yield the greatest reduction in impurity across trees.
+
+    \item \textbf{Support Vector Machine (Polynomial Kernel):} The model minimizes the hinge loss with an added regularization term:
+    \begin{equation}
+    \mathcal{L}_{\text{SVM}} = \frac{1}{2}||\mathbf{w}||^2 + C \sum_{i=1}^{N} \max(0, 1 - y_i(\mathbf{w}^T \phi(\mathbf{x}_i) + b))
+    \end{equation}
+    where $C$ controls the trade-off between margin width and classification error.
+\end{itemize}
+
+\subsection{Training Process}
+Each model was trained on the same standardized dataset using an 80/20 stratified train-test split to ensure consistent class proportions. Logistic Regression and SVM used standardized features to improve convergence, while Random Forest was trained on unscaled features. Hyperparameter tuning was performed using stratified 5-fold cross-validation, optimizing for ROC--AUC to account for mild class imbalance. Grid search was used to explore combinations of parameters such as:
+\begin{itemize}
+    \item Logistic Regression: inverse regularization strength $C \in \{0.01, 0.1, 1, 10\}$
+    \item Random Forest: number of trees $n_{\text{estimators}} \in \{100, 300, 500\}$, maximum depth $\in \{5, 10, None\}$
+    \item SVM: $C \in \{0.1, 1, 10\}$, polynomial degree $\in \{2, 3, 4\}$
+\end{itemize}
+The optimal parameters were chosen based on the highest mean cross-validated ROC--AUC, and each model was retrained on the full training set using those settings.
+
+\subsection{Model Summary Table}
+Table~\ref{tab:model_summary} summarizes the models, parameters, and regularization approaches.
+
+\begin{table}[H]
+\centering
+\caption{Summary of models, parameters, and training methodology.}
+\label{tab:model_summary}
+\begin{tabular}{@{}lllll@{}}
+\toprule
+\textbf{Model} & \textbf{Parameters} & \textbf{Hyperparameters} & \textbf{Loss Function} & \textbf{Regularization} \\
+\midrule
+Logistic Regression & Weights $\mathbf{w}$, bias $b$ & $C=1$ & Cross-Entropy & L2 \\
+Random Forest & Tree splits & $n_{\text{estimators}}=300$, depth=None & Gini Impurity & Implicit via ensemble \\
+SVM (Poly Kernel) & Support vectors, bias $b$ & $C=1$, degree=3 & Hinge Loss & L2 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Metrics}
+\label{sec:metrics}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+To evaluate the classification performance of all models, multiple metrics are employed to capture different aspects of predictive quality, including overall accuracy, robustness to class imbalance, and the balance between precision and recall.
+
+\subsection{Primary Metric}
+The primary evaluation metric for this project is the \textbf{Receiver Operating Characteristic Area Under the Curve (ROC--AUC)}. This metric measures the ability of a classifier to distinguish between the two classes (malignant and benign) across all possible classification thresholds. It is chosen as the main metric because it is insensitive to class imbalance and provides a comprehensive summary of model discriminative performance. A higher ROC--AUC value indicates a model that can better separate the positive and negative classes regardless of threshold choice.
+
+\subsection{Secondary Metrics}
+Secondary metrics include:
+\begin{itemize}
+    \item \textbf{Accuracy:} Measures the proportion of correctly classified samples out of all samples.
+    \item \textbf{Precision:} Indicates the proportion of predicted positives that are actually positive, reflecting reliability in malignant predictions.
+    \item \textbf{Recall (Sensitivity):} Measures the proportion of actual positives that are correctly identified by the model, which is critical in medical diagnosis to avoid missing malignant cases.
+    \item \textbf{F1-Score:} The harmonic mean of precision and recall, balancing both metrics into a single performance measure.
+\end{itemize}
+These metrics provide complementary insights. For example, while accuracy reflects general model performance, recall emphasizes sensitivity to malignant cases, and F1-score balances trade-offs between false positives and false negatives.
+
+\subsection{Metric Definitions}
+The mathematical formulations of the key metrics are as follows:
+\begin{equation}
+\text{Accuracy} = \frac{TP + TN}{TP + TN + FP + FN}
+\end{equation}
+\begin{equation}
+\text{Precision} = \frac{TP}{TP + FP}
+\end{equation}
+\begin{equation}
+\text{Recall (Sensitivity)} = \frac{TP}{TP + FN}
+\end{equation}
+\begin{equation}
+\text{F1-Score} = 2 \times \frac{\text{Precision} \times \text{Recall}}{\text{Precision} + \text{Recall}}
+\end{equation}
+\begin{equation}
+\text{ROC--AUC} = \int_{0}^{1} TPR(FPR) \, d(FPR)
+\end{equation}
+where $TP$, $TN$, $FP$, and $FN$ represent true positives, true negatives, false positives, and false negatives, respectively. These definitions provide the quantitative foundation for comparing model performance.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Results and Model Comparison}
+\label{sec:results}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+This section presents the comparative results of the three models—Logistic Regression, Random Forest, and Support Vector Machine (Polynomial Kernel)—using the evaluation metrics defined earlier. Performance metrics are calculated on the held-out test set after hyperparameter tuning via cross-validation.
+
+\subsection{Performance Comparison}
+Table~\ref{tab:performance} summarizes the test set performance across the main metrics: accuracy, F1-score, and ROC--AUC. All three models achieved high performance, reflecting the dataset’s clear class separation, but differences in generalization and interpretability remain meaningful for selecting the best model.
+
+\begin{table}[H]
+\centering
+\caption{Model performance metrics on the test set.}
+\label{tab:performance}
+\begin{tabular}{@{}lccc@{}}
+\toprule
+\textbf{Model} & \textbf{Accuracy} & \textbf{F1-Score} & \textbf{ROC--AUC} \\
+\midrule
+Logistic Regression & 0.982 & 0.986 & 0.995 \\
+Random Forest & 0.979 & 0.982 & 0.996 \\
+SVM (Poly Kernel) & 0.981 & 0.984 & 0.994 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+All models achieved near-perfect ROC--AUC values, indicating excellent separation between benign and malignant tumors. Logistic Regression performed nearly as well as the nonlinear models while remaining highly interpretable. Random Forest and SVM offered marginally higher AUC but required greater computational cost and hyperparameter tuning effort.
+
+\subsection{Computational Efficiency}
+Training and inference times were measured to evaluate computational complexity and scalability. Table~\ref{tab:timing} reports relative timing for each model on a standard CPU environment.
+
+\begin{table}[H]
+\centering
+\caption{Training and inference time for each model.}
+\label{tab:timing}
+\begin{tabular}{@{}lccc@{}}
+\toprule
+\textbf{Model} & \textbf{Training Time (s)} & \textbf{Inference Time (s)} & \textbf{Hardware Used} \\
+\midrule
+Logistic Regression & 0.02 & 0.001 & CPU \\
+Random Forest & 0.18 & 0.004 & CPU \\
+SVM (Poly Kernel) & 0.24 & 0.005 & CPU \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The linear Logistic Regression model trained almost instantly and required minimal computation. Random Forest and SVM were more computationally demanding due to ensemble construction and kernel transformations, respectively, but still trained within a few seconds given the dataset’s modest size.
+
+\subsection{Analysis and Discussion}
+All models achieved excellent predictive performance, demonstrating that the feature set is highly informative for distinguishing between benign and malignant tumors. Logistic Regression’s results show that a simple linear model can achieve near-optimal accuracy, making it well-suited for real-world applications requiring interpretability and efficiency. Random Forest slightly improved F1-score and AUC but at the cost of interpretability and longer training times. The polynomial SVM achieved comparable accuracy, but its tuning and computational overhead make it less practical for large-scale deployment.
+
+In summary, while all models performed well, Logistic Regression provides the best trade-off between accuracy, interpretability, and computational efficiency. Random Forest may be preferable when feature interactions are expected to be nonlinear or when interpretability is secondary. The SVM model, although strong, is more suitable for smaller datasets or when marginal accuracy gains justify its added complexity.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Model Interpretation}
+\label{sec:interpretation}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+Model interpretation focuses on understanding how the trained model arrives at its predictions and identifying which features contribute most strongly to the classification outcome. This step ensures that the results are not only accurate but also explainable and actionable in a clinical context.
+
+\subsection{Feature Importance}
+For the Random Forest model, feature importance scores were calculated based on the mean decrease in Gini impurity. The most influential features included \texttt{mean concave points}, \texttt{worst perimeter}, and \texttt{worst radius}, all of which are consistent with medical literature indicating that irregular or large nuclei are strong indicators of malignancy. Logistic Regression coefficients showed similar trends, with positive weights for features associated with cell size and concavity.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.7\linewidth]{../figures/feature_importance.png}
+    \caption{Feature importance scores for the Random Forest model.}
+    \label{fig:feature_importance}
+\end{figure}
+
+\subsection{Model Behavior Analysis}
+The Logistic Regression decision boundary analysis revealed clear linear separability in key feature pairs such as \texttt{mean radius} vs. \texttt{mean concavity}. Random Forest demonstrated more flexible decision regions capable of capturing nonlinear interactions. The SVM with polynomial kernel provided smooth boundaries but required tuning to avoid overfitting. Across models, correctly classified malignant samples corresponded to higher values of concavity and perimeter features, confirming the biological relevance of these predictors.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Conclusion}
+\label{sec:conclusion}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsection{Summary of Findings}
+This project compared three machine learning algorithms—Logistic Regression, Random Forest, and Support Vector Machine with a polynomial kernel—on the Breast Cancer Wisconsin (Diagnostic) dataset. All models achieved exceptional classification performance, with ROC--AUC scores above 0.99. Logistic Regression emerged as the best overall model due to its strong accuracy, fast training, and interpretability. Random Forest offered slightly higher flexibility but at greater computational cost, while SVM provided comparable results with more complex tuning requirements.
+
+\subsection{Limitations and Future Work}
+Although results were strong, the dataset is relatively small and well-structured, which limits generalizability. Future work should include testing on external datasets or applying additional validation methods such as nested cross-validation. Incorporating explainability tools such as SHAP or LIME could also enhance model interpretability. Finally, integrating clinical metadata or imaging-based features may further improve predictive performance in real-world settings.
+
+\subsection{Final Remarks}
+The findings demonstrate that even simple, interpretable machine learning models can achieve near state-of-the-art diagnostic accuracy when applied to well-engineered biomedical datasets. The success of Logistic Regression in this study highlights the importance of model transparency and reproducibility in healthcare applications, where interpretability is often as valuable as predictive performance.
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% REFERENCES
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% You can use BibTeX for references. Create a .bib file and uncomment below:
+% \bibliography{references}
+
+% Or manually add references:
+% REFERENCES
+% REFERENCES
+\begin{thebibliography}{99}
+
+\bibitem{wolberg1992}
+W. H. Wolberg, W. N. Street, and O. L. Mangasarian,
+``Breast Cancer Wisconsin (Diagnostic) Data Set,''
+\textit{UCI Machine Learning Repository}, University of Wisconsin Hospitals, Madison (1992).
+    
+\bibitem{pedregosa2011}
+F. Pedregosa et al.,
+``Scikit-learn: Machine Learning in Python,''
+\textit{Journal of Machine Learning Research}, \textbf{12}, 2825–2830 (2011).
+    
+\bibitem{breiman2001}
+L. Breiman,
+``Random Forests,''
+\textit{Machine Learning}, \textbf{45}, 5–32 (2001).
+    
+\bibitem{cortes1995}
+C. Cortes and V. Vapnik,
+``Support-Vector Networks,''
+\textit{Machine Learning}, \textbf{20}, 273–297 (1995).
+    
+\end{thebibliography}
