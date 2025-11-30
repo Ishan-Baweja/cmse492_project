@@ -3,7 +3,12 @@
 **Author:** Ishan Baweja  
 **Course:** CMSE 492 — Machine Learning Project  
 
-This project explores supervised learning approaches for classifying breast tumors as benign or malignant using the Breast Cancer Wisconsin (Diagnostic) dataset. The goal is to compare three model families — Logistic Regression (linear), Random Forest (ensemble), and Support Vector Machine (polynomial kernel) — to evaluate trade-offs between interpretability, accuracy, and robustness. The project includes exploratory data analysis (EDA), baseline modeling, and a final comparative evaluation.
+This project builds a complete end-to-end machine learning pipeline for classifying breast cancer tumors into PAM50 and Claudin-low molecular subtypes using the METABRIC dataset. These subtypes capture underlying tumor biology and play an important role in treatment planning and long-term prognosis.
+The project compares three model families of increasing complexity:
+Logistic Regression (linear baseline)
+Random Forest (ensemble, nonlinear)
+Support Vector Machine (margin-based classifier)
+The workflow includes preprocessing, exploratory data analysis (EDA), dimensionality reduction with PCA, model development, hyperparameter tuning, model comparison, and interpretation using SHAP and feature-importance methods. All code is fully reproducible and structured for clarity.
 
 ## Repository Structure
 cmse492_project/
